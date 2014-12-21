@@ -1,0 +1,89 @@
+---
+title: "Visualizing NYC Traffic Accients Data"
+output: html_document
+---
+
+Data on motor vehicle collisions in New York City has been made accesible by [NYC Open Data](<https://data.cityofnewyork.us/NYC-BigApps/NYPD-Motor-Vehicle-Collisions/h9gi-nx95)
+
+``````{r, message=FALSE, warning=FALSE, results="hide"}
+library(ggplot2);library(ggmap);library(dplyr);
+library(reshape2);library(data.table);library(gridExtra);
+```
+
+### Munging the data 
+
+```{r}
+collisions<-read.csv('~/Desktop/NYPD_Motor_Vehicle_Collisions.csv')
+collisions$DATE<-as.Date(collisions$DATE,"%m/%d/%Y")
+
+columns<-which(colnames(collisions)%in%c("DATE","LATITUDE","LONGITUDE",
+                                        "NUMBER.OF.PEDESTRIANS.INJURED","NUMBER.OF.PEDESTRIANS.KILLED",
+                                        "NUMBER.OF.CYCLIST.INJURED","NUMBER.OF.CYCLIST.KILLED",
+                                        "NUMBER.OF.MOTORIST.INJURED","NUMBER.OF.MOTORIST.KILLED"))
+
+collisions<-collisions[,columns] 
+
+colnames(collisions)<-c("Date","lat","lon",
+                        "Pedesterian Injured","Pedesterian Killed",
+                        "Cyclist Injured","Cyclist Killed",
+                        "Motorist Injured","Motorist Killed")
+head(collisions)
+
+melt.collisions<-melt(collisions,id.vars=c('Date','lat','lon'))
+
+melt.collisions$party<-""
+melt.collisions$party[grep('Pedesterian',melt.collisions$variable)]<-"Pedestrian"
+melt.collisions$party[grep('Cyclist',melt.collisions$variable)]<-"Cyclist"
+melt.collisions$party[grep('Motorist',melt.collisions$variable)]<-"Motorist"
+melt.collisions$outcome<-""
+melt.collisions$outcome[grep('Injured',melt.collisions$variable)]<-"Injured"
+melt.collisions$outcome[grep('Killed',melt.collisions$variable)]<-"Killed"
+
+head(melt.collisions)
+
+melt.collisions<-filter(melt.collisions,value>=1)
+melt.collisions<-melt.collisions[complete.cases(melt.collisions),]
+```
+
+### Black and White Maps as 'Base Layer' of Visualization
+
+``````{r, message=FALSE, warning=FALSE, results="hide",fig.height=8,fig.width=5.5}
+nycmap_bw1 <- qmap("DeKalb Ave and Myrtle Ave, new york", zoom = 12, color = "bw", legend = "topleft")
+grid.arrange(nycmap_bw1)
+
+nycmap_bw2 <- qmap("1 E 161st St, Bronx, NY 10451", zoom = 12, color = "bw", legend = "topleft")
+grid.arrange(nycmap_bw2)
+```
+
+### Overlay Layer to Visualize Fatal Accidents
+
+```{r}
+overlay <- stat_bin2d(aes(x = lon, y = lat, fill =party),size = .5, bins = 80, alpha = 2/3,data = filter(melt.collisions,outcome=="Killed"))
+```
+
+```{r,fig.height=8,fig.width=5.5}
+map1<-nycmap_bw1+
+  overlay+
+  theme(legend.position="bottom")+
+  scale_fill_hue(l=40)+
+  ggtitle("Lower Manhattan/Queens/Brooklyn")+
+  labs(fill='Type')
+
+map2<-nycmap_bw2+
+  overlay+
+  theme(legend.position="bottom")+
+  scale_fill_hue(l=40)+
+  ggtitle("Upper Manhattan/Queens/Bronx")+
+  labs(fill='Type')
+
+```
+
+### Finally, use gridExtra package to put two maps together
+
+```{r,fig.height=10,fig.width=16}
+
+grid.arrange(map1,map2,ncol=2,main=textGrob("Fatal Traffic Accident in NYC\nData from NYC Open Data   Visualization by @AKirayoglu", gp=gpar(cex=1.25), just="top"))
+
+```
+
+R markdown code is [here]()
