@@ -86,4 +86,4 @@ grid.arrange(map1,map2,ncol=2,main=textGrob("Fatal Traffic Accident in NYC\nData
 
 ```
 
-R markdown code is [here]()
+R markdown code is [here](https://github.com/alphankirayoglu/NYC_traffic_collisions/blob/master/Traffic_collisions.R)
